@@ -5,7 +5,7 @@
 
 // ── CONFIGURE AQUI a URL do seu Worker após o deploy ─────────────
 // Exemplo: 'https://cvilmap-api.SEU-USUARIO.workers.dev'
-const API_BASE = 'https://cvilmap-api.bruunah1jb.workers.dev';
+const API_BASE = 'https://cvilmap-api.cvilmap-cloud-bruna.workers.dev';
 // ─────────────────────────────────────────────────────────────────
 
 let authToken   = localStorage.getItem('cvilmap_token') || null;
