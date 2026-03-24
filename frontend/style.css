@@ -528,3 +528,33 @@
   .cloud-indicator {
     font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:4px;
   }
+
+/* Cadastro color dropdown */
+.cad-color-select {
+  width: calc(100% - 44px);
+  padding: 8px 12px;
+  background: #1a1a2e;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  color: #e0e0e0;
+  font-size: 13px;
+  outline: none;
+  cursor: pointer;
+  appearance: auto;
+}
+.cad-color-select:focus { border-color: #cc0000; }
+.cad-color-preview {
+  display: inline-block;
+  width: 28px; height: 28px;
+  border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+  vertical-align: middle;
+  margin-left: 8px;
+  position: relative;
+  top: -1px;
+}
+#color-palette {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
