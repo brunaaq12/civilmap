@@ -9,7 +9,8 @@
 
     <meta property="og:title" content="CVILMAP — Gestão de Obras">
     <meta property="og:description" content="Monitoramento e gestão de obras civis em tempo real.">
-    <meta property="og:image" content="img/capa-projeto.png"> <meta property="og:type" content="website">
+    <meta property="og:image" content="img/capa-projeto.png">
+    <meta property="og:type" content="website">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
@@ -112,6 +113,7 @@
       <div class="stat-pill"><span class="stat-dot" style="background:linear-gradient(135deg,var(--red),white)"></span><span id="s-civ">0</span>&nbsp;Civis</div>
     </div>
     <div class="header-sep"></div>
+    <button class="btn-cadastros" id="btn-cadastros">👥 CADASTROS</button>
     <button class="btn-relatorio" id="btn-rel">📊 RELATÓRIO</button>
     <button class="btn-user" id="btn-sair">👤 <span id="user-name">—</span> &nbsp;·&nbsp; Sair</button>
   </div>
@@ -158,6 +160,9 @@
       <button class="modal-close" id="obra-close">✕</button>
     </div>
     <div class="modal-body">
+      <div id="owner-warning" class="owner-warning" style="display:none">
+        🔒 Você não pode editar esta obra (criada por outro usuário).
+      </div>
       <div class="modal-coords" id="modal-coords">📌 Lat: — &nbsp;|&nbsp; Lng: —</div>
       <div class="modal-group">
         <label class="modal-label">Nome da Obra *</label>
@@ -201,6 +206,37 @@
   </div>
 </div>
 
+<!-- ══ MODAL CADASTROS ══ -->
+<div class="overlay" id="overlay-cadastros">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">
+        <div class="modal-icon">👥</div>
+        <span>Cadastros</span>
+      </div>
+      <button class="modal-close" id="cadastros-close">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-group">
+        <label class="modal-label">Nome</label>
+        <input class="modal-input" id="cad-nome" placeholder="Nome do responsável" type="text">
+      </div>
+      <div class="modal-group">
+        <label class="modal-label">Cor do Pin</label>
+        <div class="color-palette" id="color-palette"></div>
+      </div>
+      <input type="hidden" id="cad-cor" value="#3b82f6">
+      <input type="hidden" id="cad-editing-id" value="">
+      <div style="display:flex;gap:8px;margin-bottom:18px;">
+        <button class="btn btn-save" id="btn-cad-save">➕ Adicionar</button>
+        <button class="btn btn-cancel" id="btn-cad-cancel-edit" style="display:none">Cancelar Edição</button>
+      </div>
+      <div class="cadastros-divider"></div>
+      <div id="cadastros-list" class="cadastros-list"></div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ MODAL RELATÓRIO ══ -->
 <div class="overlay" id="overlay-rel">
   <div class="modal wide">
@@ -219,15 +255,23 @@
           <input class="modal-input" id="rel-fim" type="date">
         </div>
       </div>
-      <div class="modal-group">
-        <label class="modal-label">Filtrar por Status</label>
-        <select class="modal-select" id="rel-status">
-          <option value="all">Todos os status</option>
-          <option value="andamento">Em Andamento</option>
-          <option value="concluida">Concluída</option>
-          <option value="paralisada">Paralisada</option>
-          <option value="civil">Obra Civil</option>
-        </select>
+      <div class="modal-row">
+        <div class="modal-group">
+          <label class="modal-label">Filtrar por Status</label>
+          <select class="modal-select" id="rel-status">
+            <option value="all">Todos os status</option>
+            <option value="andamento">Em Andamento</option>
+            <option value="concluida">Concluída</option>
+            <option value="paralisada">Paralisada</option>
+            <option value="civil">Obra Civil</option>
+          </select>
+        </div>
+        <div class="modal-group">
+          <label class="modal-label">Responsável</label>
+          <select class="modal-select" id="rel-responsavel">
+            <option value="all">Todos (Geral)</option>
+          </select>
+        </div>
       </div>
       <button class="btn btn-cancel" style="width:100%;margin-bottom:4px" onclick="previewRel()">🔍 Visualizar Registros</button>
       <div id="rel-preview" class="rel-preview" style="display:none"></div>
