@@ -20,10 +20,21 @@ let map;
 //  CADASTROS (localStorage por usuário)
 // ══════════════════════════════════════════════════════════════════
 const PIN_COLORS = [
-  '#cc0000','#e60000','#ff4444','#ff8800','#f97316',
-  '#eab308','#84cc16','#22c55e','#14b8a6','#06b6d4',
-  '#3b82f6','#6366f1','#8b5cf6','#a855f7','#d946ef',
-  '#ec4899','#f43f5e','#78716c','#737373','#ffffff'
+  { nome: 'Azul',          hex: '#3b82f6' },
+  { nome: 'Laranja',       hex: '#f97316' },
+  { nome: 'Roxo/Violeta',  hex: '#7c3aed' },
+  { nome: 'Branco',        hex: '#ffffff' },
+  { nome: 'Preto',         hex: '#171717' },
+  { nome: 'Cinza',         hex: '#737373' },
+  { nome: 'Marrom',        hex: '#92400e' },
+  { nome: 'Bege',          hex: '#d4b896' },
+  { nome: 'Rosa',          hex: '#ec4899' },
+  { nome: 'Ciano',         hex: '#06b6d4' },
+  { nome: 'Magenta',       hex: '#d946ef' },
+  { nome: 'Turquesa',      hex: '#14b8a6' },
+  { nome: 'Lilás',         hex: '#a78bfa' },
+  { nome: 'Dourado',       hex: '#ca8a04' },
+  { nome: 'Prata',         hex: '#a8a29e' },
 ];
 
 function getCadastroKey() {
@@ -481,18 +492,22 @@ document.getElementById('search-input').addEventListener('input', e => {
 // ══════════════════════════════════════════════════════════════════
 function initCadastrosUI() {
   const palette = document.getElementById('color-palette');
-  palette.innerHTML = PIN_COLORS.map(c =>
-    `<div class="color-swatch" data-color="${c}" style="background:${c}" onclick="selectCadColor('${c}')"></div>`
-  ).join('');
-  selectCadColor('#3b82f6');
+  palette.innerHTML = `
+    <select id="cad-cor-select" class="cad-color-select" onchange="selectCadColor(this.value)">
+      ${PIN_COLORS.map(c => `<option value="${c.hex}">${c.nome}</option>`).join('')}
+    </select>
+    <div id="cad-cor-preview" class="cad-color-preview" style="background:#3b82f6"></div>
+  `;
+  document.getElementById('cad-cor').value = '#3b82f6';
   renderCadastrosList();
 }
 
 window.selectCadColor = function(c) {
   document.getElementById('cad-cor').value = c;
-  document.querySelectorAll('.color-swatch').forEach(s => {
-    s.classList.toggle('selected', s.dataset.color === c);
-  });
+  const preview = document.getElementById('cad-cor-preview');
+  if (preview) preview.style.background = c;
+  const sel = document.getElementById('cad-cor-select');
+  if (sel) sel.value = c;
 };
 
 document.getElementById('btn-cadastros').addEventListener('click', () => {
