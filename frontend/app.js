@@ -730,6 +730,7 @@ function closeOverlay(id) { document.getElementById(id).classList.remove('show')
 function fmtDate(d) { if(!d) return '—'; const [y,m,day] = d.split('-'); return `${day}/${m}/${y}`; }
 let toastTimer;
 function showToast(msg) {
+  
   const t = document.getElementById('toast');
   document.getElementById('toast-msg').textContent = msg;
   t.classList.add('show');
