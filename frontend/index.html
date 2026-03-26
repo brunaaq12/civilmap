@@ -36,11 +36,11 @@
   <div class="auth-bg"></div>
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="auth-logo-icon">🏗️</div>
+      <div class="auth-logo-icon">🗺️</div>
       <div class="auth-logo-text">CVIL<span>MAP</span></div>
     </div>
     <div class="auth-title">Acesso ao Sistema</div>
-    <div class="auth-sub">Gestão de Obras Civis — Salvador, Bahia</div>
+    <div class="auth-sub">Gestão de Obras</div>
     <div class="cloud-badge">☁️ Banco de Dados na Nuvem</div>
     <div class="form-group">
       <label class="form-label">Usuário</label>
@@ -61,7 +61,7 @@
   <div class="auth-bg"></div>
   <div class="auth-card">
     <div class="auth-logo">
-      <div class="auth-logo-icon">🏗️</div>
+      <div class="auth-logo-icon">🗺️</div>
       <div class="auth-logo-text">CVIL<span>MAP</span></div>
     </div>
     <div class="auth-title">Criar Conta</div>
@@ -101,7 +101,7 @@
 <div id="app">
   <div class="header">
     <div class="header-logo">
-      <div class="header-logo-icon">🏗️</div>
+      <div class="header-logo-icon">🗺️</div>
       CVIL<span>MAP</span>
     </div>
     <div class="header-divider"></div>
@@ -110,7 +110,7 @@
       <div class="stat-pill"><span class="stat-dot" style="background:var(--yellow)"></span><span id="s-and">0</span>&nbsp;Andamento</div>
       <div class="stat-pill"><span class="stat-dot" style="background:var(--green)"></span><span id="s-con">0</span>&nbsp;Concluídas</div>
       <div class="stat-pill"><span class="stat-dot" style="background:var(--red2)"></span><span id="s-par">0</span>&nbsp;Paralisadas</div>
-      <div class="stat-pill"><span class="stat-dot" style="background:linear-gradient(135deg,var(--red),white)"></span><span id="s-civ">0</span>&nbsp;Civis</div>
+      <div class="stat-pill"><span class="stat-dot" style="background:linear-gradient(135deg,var(--red),white)"></span><span id="s-cot">0</span>&nbsp;Civis</div>
     </div>
     <div class="header-sep"></div>
     <button class="btn-cadastros" id="btn-cadastros">👥 CADASTROS</button>
@@ -128,7 +128,7 @@
           <span class="filter-chip" data-filter="andamento">🟡 Andamento</span>
           <span class="filter-chip" data-filter="concluida">🟢 Concluída</span>
           <span class="filter-chip" data-filter="paralisada">🔴 Paralisada</span>
-          <span class="filter-chip" data-filter="civil">⬤ Obra Civil</span>
+          <span class="filter-chip" data-filter="cotacao">🔵 Obra em Cotação</span>
         </div>
       </div>
       <div class="sidebar-list" id="sidebar-list">
@@ -179,7 +179,7 @@
             <option value="andamento">🟡 Em Andamento</option>
             <option value="concluida">🟢 Concluída</option>
             <option value="paralisada">🔴 Paralisada</option>
-            <option value="civil">⬤ Obra Civil</option>
+            <option value="cotacao">🔵 Obra em Cotação</option>
           </select>
         </div>
       </div>
@@ -263,7 +263,7 @@
             <option value="andamento">Em Andamento</option>
             <option value="concluida">Concluída</option>
             <option value="paralisada">Paralisada</option>
-            <option value="civil">Obra Civil</option>
+            <option value="cotacao">Obra em Cotação</option>
           </select>
         </div>
         <div class="modal-group">
