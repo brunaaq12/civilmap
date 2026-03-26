@@ -17,7 +17,7 @@ let relObras     = [];
 let map;
 
 // ══════════════════════════════════════════════════════════════════
-//  CADASTROS (localStorage por usuário)
+//  CADASTROS (API / Nuvem)
 // ══════════════════════════════════════════════════════════════════
 const PIN_COLORS = [
   { nome: 'Azul',          hex: '#3b82f6' },
@@ -37,17 +37,20 @@ const PIN_COLORS = [
   { nome: 'Prata',         hex: '#a8a29e' },
 ];
 
-function getCadastroKey() {
-  return 'cvilmap_cadastros_' + (currentUser?.id || currentUser?.username || 'anon');
+// Cadastros em memória (carregados da API)
+let cadastrosCache = [];
+
+async function loadCadastrosFromApi() {
+  try {
+    const res = await api('GET', '/api/cadastros');
+    if (res.ok) cadastrosCache = res.data.cadastros || [];
+  } catch { cadastrosCache = []; }
 }
 function getCadastros() {
-  try { return JSON.parse(localStorage.getItem(getCadastroKey()) || '[]'); } catch { return []; }
-}
-function saveCadastros(list) {
-  localStorage.setItem(getCadastroKey(), JSON.stringify(list));
+  return cadastrosCache;
 }
 function findCadastroByNome(nome) {
-  return getCadastros().find(c => c.nome.toLowerCase() === nome.toLowerCase());
+  return cadastrosCache.find(c => c.nome.toLowerCase() === nome.toLowerCase());
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -241,7 +244,7 @@ async function loadStats() {
     document.getElementById('s-and').textContent = s.andamento || 0;
     document.getElementById('s-con').textContent = s.concluida || 0;
     document.getElementById('s-par').textContent = s.paralisada || 0;
-    document.getElementById('s-civ').textContent = s.civil || 0;
+    document.getElementById('s-cot').textContent = s.cotacao || 0;
   } catch {}
 }
 
@@ -260,14 +263,14 @@ const STATUS_COLORS = {
   andamento:  '#eab308',
   concluida:  '#22c55e',
   paralisada: '#cc0000',
-  civil:      '#cc0000'
+  cotacao:    '#3b82f6'
 };
 
 function dualPinIcon(status, responsavel) {
   const statusColor = STATUS_COLORS[status] || '#eab308';
   const cadastro = findCadastroByNome(responsavel);
   const cadastroColor = cadastro ? cadastro.cor : '#555555';
-  const isCivil = status === 'civil';
+  const isCivil = status === 'cotacao';
 
   return L.divIcon({
     className: '',
@@ -289,7 +292,7 @@ function dualPinIcon(status, responsavel) {
 
 function addMarker(o) {
   if (markers[o.id]) map.removeLayer(markers[o.id]);
-  const sLabel = { andamento:'🟡 Em Andamento', concluida:'🟢 Concluída', paralisada:'🔴 Paralisada', civil:'⬤ Obra Civil' };
+  const sLabel = { andamento:'🟡 Em Andamento', concluida:'🟢 Concluída', paralisada:'🔴 Paralisada', cotacao:'🔵 Obra em Cotação' };
 
   const isOwner = checkOwnership(o);
   const editBtn = `<button class="popup-edit" onclick="openEdit('${o.id}')">${isOwner ? '✏️ Editar' : '👁️ Ver Detalhes'}</button>`;
@@ -446,8 +449,8 @@ function renderSidebar(obras) {
     list.innerHTML = '<div class="sidebar-empty"><p>Nenhuma obra.</p></div>';
     return;
   }
-  const sLabel = { andamento:'Em Andamento', concluida:'Concluída', paralisada:'Paralisada', civil:'Obra Civil' };
-  const sEmoji = { andamento:'🟡', concluida:'🟢', paralisada:'🔴', civil:'⬤' };
+  const sLabel = { andamento:'Em Andamento', concluida:'Concluída', paralisada:'Paralisada', cotacao:'Obra em Cotação' };
+  const sEmoji = { andamento:'🟡', concluida:'🟢', paralisada:'🔴', cotacao:'🔵' };
 
   list.innerHTML = obras.map(o => {
     const cadastro = findCadastroByNome(o.responsavel);
@@ -490,7 +493,8 @@ document.getElementById('search-input').addEventListener('input', e => {
 // ══════════════════════════════════════════════════════════════════
 //  CADASTROS UI
 // ══════════════════════════════════════════════════════════════════
-function initCadastrosUI() {
+async function initCadastrosUI() {
+  await loadCadastrosFromApi();
   const palette = document.getElementById('color-palette');
   palette.innerHTML = `
     <select id="cad-cor-select" class="cad-color-select" onchange="selectCadColor(this.value)">
@@ -510,33 +514,38 @@ window.selectCadColor = function(c) {
   if (sel) sel.value = c;
 };
 
-document.getElementById('btn-cadastros').addEventListener('click', () => {
+document.getElementById('btn-cadastros').addEventListener('click', async () => {
+  await loadCadastrosFromApi();
   renderCadastrosList();
   openOverlay('overlay-cadastros');
 });
 document.getElementById('cadastros-close').addEventListener('click', () => closeOverlay('overlay-cadastros'));
 
-document.getElementById('btn-cad-save').addEventListener('click', () => {
+document.getElementById('btn-cad-save').addEventListener('click', async () => {
   const nome = document.getElementById('cad-nome').value.trim();
   const cor  = document.getElementById('cad-cor').value;
   const editId = document.getElementById('cad-editing-id').value;
   if (!nome) { showToast('⚠️ Digite um nome!'); return; }
 
-  const list = getCadastros();
-  if (editId) {
-    const idx = list.findIndex(c => c.id === editId);
-    if (idx >= 0) { list[idx].nome = nome; list[idx].cor = cor; }
-    document.getElementById('cad-editing-id').value = '';
-    document.getElementById('btn-cad-save').textContent = '➕ Adicionar';
-    document.getElementById('btn-cad-cancel-edit').style.display = 'none';
-  } else {
-    list.push({ id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), nome, cor });
+  try {
+    if (editId) {
+      const res = await api('PUT', '/api/cadastros/' + editId, { nome, cor });
+      if (!res.ok) throw new Error(res.data.error || 'Erro ao atualizar');
+      document.getElementById('cad-editing-id').value = '';
+      document.getElementById('btn-cad-save').textContent = '➕ Adicionar';
+      document.getElementById('btn-cad-cancel-edit').style.display = 'none';
+    } else {
+      const res = await api('POST', '/api/cadastros', { nome, cor });
+      if (!res.ok) throw new Error(res.data.error || 'Erro ao criar');
+    }
+    document.getElementById('cad-nome').value = '';
+    await loadCadastrosFromApi();
+    renderCadastrosList();
+    refreshMarkers();
+    showToast(editId ? '✏️ Cadastro atualizado!' : '✅ Cadastro adicionado!');
+  } catch (e) {
+    showToast('⚠️ ' + (e.message || 'Erro ao salvar'));
   }
-  saveCadastros(list);
-  document.getElementById('cad-nome').value = '';
-  renderCadastrosList();
-  refreshMarkers();
-  showToast(editId ? '✏️ Cadastro atualizado!' : '✅ Cadastro adicionado!');
 });
 
 document.getElementById('btn-cad-cancel-edit').addEventListener('click', () => {
@@ -547,8 +556,7 @@ document.getElementById('btn-cad-cancel-edit').addEventListener('click', () => {
 });
 
 window.editCadastro = function(id) {
-  const list = getCadastros();
-  const c = list.find(x => x.id === id);
+  const c = cadastrosCache.find(x => x.id === id);
   if (!c) return;
   document.getElementById('cad-nome').value = c.nome;
   document.getElementById('cad-cor').value = c.cor;
@@ -558,17 +566,22 @@ window.editCadastro = function(id) {
   selectCadColor(c.cor);
 };
 
-window.deleteCadastro = function(id) {
+window.deleteCadastro = async function(id) {
   if (!confirm('Excluir este cadastro?')) return;
-  const list = getCadastros().filter(c => c.id !== id);
-  saveCadastros(list);
-  renderCadastrosList();
-  refreshMarkers();
-  showToast('🗑️ Cadastro excluído!');
+  try {
+    const res = await api('DELETE', '/api/cadastros/' + id);
+    if (!res.ok) throw new Error(res.data.error || 'Erro ao excluir');
+    await loadCadastrosFromApi();
+    renderCadastrosList();
+    refreshMarkers();
+    showToast('🗑️ Cadastro excluído!');
+  } catch (e) {
+    showToast('⚠️ ' + (e.message || 'Erro ao excluir'));
+  }
 };
 
 function renderCadastrosList() {
-  const list = getCadastros();
+  const list = cadastrosCache;
   const el = document.getElementById('cadastros-list');
   if (!list.length) {
     el.innerHTML = '<div style="text-align:center;color:#777;padding:16px;font-size:13px;">Nenhum cadastro ainda.</div>';
@@ -599,7 +612,7 @@ document.getElementById('btn-rel').addEventListener('click', () => {
   const sel = document.getElementById('rel-responsavel');
   sel.innerHTML = '<option value="all">Todos (Geral)</option>';
   const resps = [...new Set(allObras.map(o => o.responsavel))];
-  const cadastros = getCadastros();
+  const cadastros = cadastrosCache;
   // Adicionar responsáveis das obras
   resps.forEach(r => {
     const opt = document.createElement('option');
@@ -634,8 +647,8 @@ window.previewRel = function() {
   if (fim)              filtered = filtered.filter(o => o.data_fim && o.data_fim <= fim);
 
   relObras = filtered;
-  const sLabel = { andamento:'Em Andamento', concluida:'Concluída', paralisada:'Paralisada', civil:'Obra Civil' };
-  const sEmoji = { andamento:'🟡', concluida:'🟢', paralisada:'🔴', civil:'⬤' };
+  const sLabel = { andamento:'Em Andamento', concluida:'Concluída', paralisada:'Paralisada', cotacao:'Obra em Cotação' };
+  const sEmoji = { andamento:'🟡', concluida:'🟢', paralisada:'🔴', cotacao:'🔵' };
 
   const preview = document.getElementById('rel-preview');
   if (!filtered.length) {
@@ -665,7 +678,7 @@ window.previewRel = function() {
 document.getElementById('btn-export').addEventListener('click', () => {
   if (!relObras.length) { previewRel(); }
   if (!relObras.length) { showToast('⚠️ Nenhum dado para exportar.'); return; }
-  const sLabel = { andamento:'Em Andamento', concluida:'Concluída', paralisada:'Paralisada', civil:'Obra Civil' };
+  const sLabel = { andamento:'Em Andamento', concluida:'Concluída', paralisada:'Paralisada', cotacao:'Obra em Cotação' };
   const data = relObras.map(o => ({
     'Nome': o.nome,
     'Responsável': o.responsavel,
