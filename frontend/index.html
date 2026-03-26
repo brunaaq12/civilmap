@@ -1,290 +1,37 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CVILMAP — Gestão de Obras</title>
-
-    <link rel="icon" type="image/png" href="img/favicon.png">
-
-    <meta property="og:title" content="CVILMAP — Gestão de Obras">
-    <meta property="og:description" content="Monitoramento e gestão de obras civis em tempo real.">
-    <meta property="og:image" content="img/capa-projeto.png">
-    <meta property="og:type" content="website">
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <link rel="stylesheet" href="style.css">
-    
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CVILMAP — Gestão de Obras Civis</title>
+  <meta name="description" content="Sistema de gestão e mapeamento de obras civis — Salvador, Bahia" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&display=swap" rel="stylesheet" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-<!-- ══ LOADING ══ -->
-<div id="app-loading">
-  <div class="db-loading-card">
-    <div class="db-spinner"></div>
-    <div class="db-loading-logo">🏗️ CVIL<span>MAP</span></div>
-    <div class="db-loading-msg" id="app-loading-msg">Conectando ao banco de dados na nuvem...</div>
-  </div>
-</div>
-
-<!-- ══ LOGIN ══ -->
-<div class="auth-screen gone" id="screen-login">
-  <div class="auth-bg"></div>
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-icon">🏗️</div>
-      <div class="auth-logo-text">CVIL<span>MAP</span></div>
-    </div>
-    <div class="auth-title">Acesso ao Sistema</div>
-    <div class="auth-sub">Gestão de Obras Civis — Salvador, Bahia</div>
-    <div class="cloud-badge">☁️ Banco de Dados na Nuvem</div>
-    <div class="form-group">
-      <label class="form-label">Usuário</label>
-      <input class="form-input" id="l-user" type="text" placeholder="Digite seu usuário" autocomplete="off">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Senha</label>
-      <input class="form-input" id="l-pass" type="password" placeholder="Digite sua senha">
-    </div>
-    <button class="btn-auth" id="btn-login">Entrar no Sistema</button>
-    <div class="auth-error" id="login-error">⚠️ Usuário ou senha incorretos.</div>
-    <div class="auth-alt">Não tem conta? <a onclick="showRegister()">Criar cadastro</a></div>
-  </div>
-</div>
-
-<!-- ══ REGISTRO ══ -->
-<div class="auth-screen gone" id="screen-register">
-  <div class="auth-bg"></div>
-  <div class="auth-card">
-    <div class="auth-logo">
-      <div class="auth-logo-icon">🏗️</div>
-      <div class="auth-logo-text">CVIL<span>MAP</span></div>
-    </div>
-    <div class="auth-title">Criar Conta</div>
-    <div class="auth-sub">Preencha os dados para se cadastrar</div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Nome Completo</label>
-        <input class="form-input" id="r-nome" type="text" placeholder="Seu nome">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Cargo / Função</label>
-        <input class="form-input" id="r-cargo" type="text" placeholder="Ex: Engenheiro">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Usuário</label>
-      <input class="form-input" id="r-user" type="text" placeholder="Escolha um nome de usuário" autocomplete="off">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label class="form-label">Senha</label>
-        <input class="form-input" id="r-pass" type="password" placeholder="Mínimo 6 caracteres">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Confirmar Senha</label>
-        <input class="form-input" id="r-pass2" type="password" placeholder="Repita a senha">
-      </div>
-    </div>
-    <button class="btn-auth" id="btn-register">Criar Cadastro</button>
-    <div class="auth-error"   id="register-error"></div>
-    <div class="auth-success" id="register-success"></div>
-    <div class="auth-alt">Já tem conta? <a onclick="showLogin()">Fazer login</a></div>
-  </div>
-</div>
-
-<!-- ══ APP ══ -->
-<div id="app">
-  <div class="header">
-    <div class="header-logo">
-      <div class="header-logo-icon">🏗️</div>
-      CVIL<span>MAP</span>
-    </div>
-    <div class="header-divider"></div>
-    <div class="cloud-indicator" title="Conectado ao Cloudflare D1">☁️ <span id="cloud-status">Online</span></div>
-    <div class="header-stats">
-      <div class="stat-pill"><span class="stat-dot" style="background:var(--yellow)"></span><span id="s-and">0</span>&nbsp;Andamento</div>
-      <div class="stat-pill"><span class="stat-dot" style="background:var(--green)"></span><span id="s-con">0</span>&nbsp;Concluídas</div>
-      <div class="stat-pill"><span class="stat-dot" style="background:var(--red2)"></span><span id="s-par">0</span>&nbsp;Paralisadas</div>
-      <div class="stat-pill"><span class="stat-dot" style="background:linear-gradient(135deg,var(--red),white)"></span><span id="s-civ">0</span>&nbsp;Civis</div>
-    </div>
-    <div class="header-sep"></div>
-    <button class="btn-cadastros" id="btn-cadastros">👥 CADASTROS</button>
-    <button class="btn-relatorio" id="btn-rel">📊 RELATÓRIO</button>
-    <button class="btn-user" id="btn-sair">👤 <span id="user-name">—</span> &nbsp;·&nbsp; Sair</button>
+  <!-- Auth Screen -->
+  <div id="auth-screen" class="auth-screen">
+    <div class="auth-bg"></div>
+    <div class="auth-card" id="auth-card"></div>
   </div>
 
-  <div class="main-layout">
-    <div class="sidebar">
-      <div class="sidebar-header">
-        <div class="sidebar-title">📋 Obras <span>Cadastradas</span></div>
-        <input class="search-box" id="search-input" placeholder="🔍  Buscar obra ou responsável..." type="text">
-        <div class="filter-row" id="filter-row">
-          <span class="filter-chip all active" data-filter="all">Todas</span>
-          <span class="filter-chip" data-filter="andamento">🟡 Andamento</span>
-          <span class="filter-chip" data-filter="concluida">🟢 Concluída</span>
-          <span class="filter-chip" data-filter="paralisada">🔴 Paralisada</span>
-          <span class="filter-chip" data-filter="civil">⬤ Obra Civil</span>
-        </div>
-      </div>
-      <div class="sidebar-list" id="sidebar-list">
-        <div class="sidebar-empty"><div class="sidebar-empty-icon">⏳</div><p>Carregando obras...</p></div>
-      </div>
-    </div>
-
-    <div id="map-container">
-      <div id="map"></div>
-      <div class="cep-bar" id="cep-bar">
-        <div class="cep-icon">📮</div>
-        <input class="cep-input" id="cep-input" type="text" placeholder="Buscar por CEP (ex: 40010-000)" maxlength="9" autocomplete="off">
-        <button class="cep-btn" id="cep-btn">BUSCAR</button>
-      </div>
-      <div class="cep-result-balloon" id="cep-balloon"></div>
-      <div class="map-hint" id="map-hint">🖱️ Clique em qualquer ponto do mapa para adicionar uma obra</div>
+  <!-- Main App -->
+  <div id="app" style="display:none;">
+    <header id="header"></header>
+    <div class="main-layout">
+      <aside id="sidebar"></aside>
+      <div id="map-container"></div>
     </div>
   </div>
-</div>
 
-<!-- ══ MODAL OBRA ══ -->
-<div class="overlay" id="overlay-obra">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">
-        <div class="modal-icon">🏗️</div>
-        <span id="modal-obra-title">Nova Obra</span>
-      </div>
-      <button class="modal-close" id="obra-close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div id="owner-warning" class="owner-warning" style="display:none">
-        🔒 Você não pode editar esta obra (criada por outro usuário).
-      </div>
-      <div class="modal-coords" id="modal-coords">📌 Lat: — &nbsp;|&nbsp; Lng: —</div>
-      <div class="modal-group">
-        <label class="modal-label">Nome da Obra *</label>
-        <input class="modal-input" id="f-nome" placeholder="Ex: Revitalização da Av. Paralela" type="text">
-      </div>
-      <div class="modal-row">
-        <div class="modal-group">
-          <label class="modal-label">Responsável *</label>
-          <input class="modal-input" id="f-resp" placeholder="Nome ou órgão" type="text">
-        </div>
-        <div class="modal-group">
-          <label class="modal-label">Status</label>
-          <select class="modal-select" id="f-status">
-            <option value="andamento">🟡 Em Andamento</option>
-            <option value="concluida">🟢 Concluída</option>
-            <option value="paralisada">🔴 Paralisada</option>
-            <option value="civil">⬤ Obra Civil</option>
-          </select>
-        </div>
-      </div>
-      <div class="modal-row">
-        <div class="modal-group">
-          <label class="modal-label">Data de Início</label>
-          <input class="modal-input" id="f-inicio" type="date">
-        </div>
-        <div class="modal-group">
-          <label class="modal-label">Previsão de Término</label>
-          <input class="modal-input" id="f-fim" type="date">
-        </div>
-      </div>
-      <div class="modal-group">
-        <label class="modal-label">Observações</label>
-        <textarea class="modal-textarea" id="f-obs" placeholder="Informações adicionais..."></textarea>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-danger" id="btn-delete" style="display:none">🗑 Remover</button>
-      <button class="btn btn-cancel" id="obra-cancel">Cancelar</button>
-      <button class="btn btn-save" id="btn-save">💾 Salvar Obra</button>
-    </div>
-  </div>
-</div>
+  <!-- Overlays -->
+  <div id="overlay-obra" class="overlay" style="display:none;"></div>
+  <div id="overlay-cad" class="overlay" style="display:none;"></div>
+  <div id="overlay-rel" class="overlay" style="display:none;"></div>
 
-<!-- ══ MODAL CADASTROS ══ -->
-<div class="overlay" id="overlay-cadastros">
-  <div class="modal">
-    <div class="modal-header">
-      <div class="modal-title">
-        <div class="modal-icon">👥</div>
-        <span>Cadastros</span>
-      </div>
-      <button class="modal-close" id="cadastros-close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-group">
-        <label class="modal-label">Nome</label>
-        <input class="modal-input" id="cad-nome" placeholder="Nome do responsável" type="text">
-      </div>
-      <div class="modal-group">
-        <label class="modal-label">Cor do Pin</label>
-        <div class="color-palette" id="color-palette"></div>
-      </div>
-      <input type="hidden" id="cad-cor" value="#3b82f6">
-      <input type="hidden" id="cad-editing-id" value="">
-      <div style="display:flex;gap:8px;margin-bottom:18px;">
-        <button class="btn btn-save" id="btn-cad-save">➕ Adicionar</button>
-        <button class="btn btn-cancel" id="btn-cad-cancel-edit" style="display:none">Cancelar Edição</button>
-      </div>
-      <div class="cadastros-divider"></div>
-      <div id="cadastros-list" class="cadastros-list"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ══ MODAL RELATÓRIO ══ -->
-<div class="overlay" id="overlay-rel">
-  <div class="modal wide">
-    <div class="modal-header">
-      <div class="modal-title"><div class="modal-icon">📊</div>Relatório de Obras</div>
-      <button class="modal-close" id="rel-close">✕</button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-row">
-        <div class="modal-group">
-          <label class="modal-label">Data Inicial</label>
-          <input class="modal-input" id="rel-inicio" type="date">
-        </div>
-        <div class="modal-group">
-          <label class="modal-label">Data Final</label>
-          <input class="modal-input" id="rel-fim" type="date">
-        </div>
-      </div>
-      <div class="modal-row">
-        <div class="modal-group">
-          <label class="modal-label">Filtrar por Status</label>
-          <select class="modal-select" id="rel-status">
-            <option value="all">Todos os status</option>
-            <option value="andamento">Em Andamento</option>
-            <option value="concluida">Concluída</option>
-            <option value="paralisada">Paralisada</option>
-            <option value="civil">Obra Civil</option>
-          </select>
-        </div>
-        <div class="modal-group">
-          <label class="modal-label">Responsável</label>
-          <select class="modal-select" id="rel-responsavel">
-            <option value="all">Todos (Geral)</option>
-          </select>
-        </div>
-      </div>
-      <button class="btn btn-cancel" style="width:100%;margin-bottom:4px" onclick="previewRel()">🔍 Visualizar Registros</button>
-      <div id="rel-preview" class="rel-preview" style="display:none"></div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-cancel" id="rel-cancel">Cancelar</button>
-      <button class="btn btn-export" id="btn-export">📥 Exportar Excel</button>
-    </div>
-  </div>
-</div>
-
-<div class="toast" id="toast"><span id="toast-msg"></span></div>
-
-<script src="app.js"></script>
+  <script src="app.js"></script>
 </body>
 </html>
