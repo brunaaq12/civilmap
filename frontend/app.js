@@ -43,14 +43,40 @@ let cadastrosCache = [];
 async function loadCadastrosFromApi() {
   try {
     const res = await api('GET', '/api/cadastros');
-    if (res.ok) cadastrosCache = res.data.cadastros || [];
+    if (res.ok) {
+      cadastrosCache = res.data.cadastros || [];
+      updateResponsavelSelects();
+    }
   } catch { cadastrosCache = []; }
+}
+
+function updateResponsavelSelects() {
+  const selects = ['f-resp', 'rel-responsavel'];
+  selects.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const currentVal = el.value;
+    const isRel = id === 'rel-responsavel';
+    
+    el.innerHTML = isRel ? '<option value="all">Todos (Geral)</option>' : '<option value="">Selecione um responsável...</option>';
+    
+    cadastrosCache.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.nome;
+      opt.textContent = c.nome;
+      el.appendChild(opt);
+    });
+    
+    if (currentVal) el.value = currentVal;
+  });
 }
 function getCadastros() {
   return cadastrosCache;
 }
 function findCadastroByNome(nome) {
-  return cadastrosCache.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+  if (!nome) return null;
+  const n = nome.trim().toLowerCase();
+  return cadastrosCache.find(c => c.nome.trim().toLowerCase() === n);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -198,9 +224,20 @@ async function initApp() {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 
+  // Carregar cadastros ANTES de carregar obras (para sincronizar cores dos pins)
+  await loadCadastrosFromApi();
   await loadObras('all');
   await loadStats();
   initCadastrosUI();
+  
+  // Iniciar sincronizacao automatica de obras
+  startObrasSync();
+  
+  // Sincronizar cadastros a cada 5 segundos para garantir consistencia entre dispositivos
+  setInterval(async () => {
+    await loadCadastrosFromApi();
+    refreshMarkers();
+  }, 5000);
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -231,9 +268,21 @@ async function loadObras(filter = 'all', search = '') {
     renderSidebar(obras);
     setCloudStatus(true);
   } catch (e) {
-    list.innerHTML = '<div class="sidebar-empty">❌ Erro de sincronização.</div>';
+    list.innerHTML = '<div class="sidebar-empty">❌ Erro de sincronizacao.</div>';
     setCloudStatus(false);
   }
+}
+
+// Sincronizar obras a cada 10 segundos para manter o mapa atualizado em todos os dispositivos
+let syncObrasInterval;
+function startObrasSync() {
+  if (syncObrasInterval) clearInterval(syncObrasInterval);
+  syncObrasInterval = setInterval(async () => {
+    await loadObras(activeFilter);
+  }, 10000);
+}
+function stopObrasSync() {
+  if (syncObrasInterval) clearInterval(syncObrasInterval);
 }
 
 async function loadStats() {
@@ -332,6 +381,7 @@ window.openEdit = function(id) {
   document.getElementById('modal-coords').textContent =
     `📌 Lat: ${parseFloat(obra.latitude).toFixed(5)}  |  Lng: ${parseFloat(obra.longitude).toFixed(5)}`;
   document.getElementById('f-nome').value    = obra.nome || '';
+  updateResponsavelSelects(); // Garante que a lista esteja atualizada
   document.getElementById('f-resp').value    = obra.responsavel || '';
   document.getElementById('f-status').value  = obra.status || 'andamento';
   document.getElementById('f-inicio').value  = obra.data_inicio || '';
@@ -484,6 +534,8 @@ document.getElementById('filter-row').addEventListener('click', e => {
   chip.classList.add('active');
   activeFilter = chip.dataset.filter;
   loadObras(activeFilter, document.getElementById('search-input').value.trim());
+  // Reiniciar sincronizacao com novo filtro
+  startObrasSync();
 });
 
 document.getElementById('search-input').addEventListener('input', e => {
