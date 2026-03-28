@@ -231,13 +231,13 @@ async function initApp() {
   initCadastrosUI();
   
   // Iniciar sincronizacao automatica de obras
-  startObrasSync();
+  // startObrasSync(); // Desativado a pedido da usuária
   
   // Sincronizar cadastros a cada 5 segundos para garantir consistencia entre dispositivos
-  setInterval(async () => {
-    await loadCadastrosFromApi();
-    refreshMarkers();
-  }, 5000);
+  // setInterval(async () => {
+  //   await loadCadastrosFromApi();
+  //   refreshMarkers();
+  // }, 5000); // Desativado a pedido da usuária
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -578,6 +578,13 @@ document.getElementById('btn-cad-save').addEventListener('click', async () => {
   const cor  = document.getElementById('cad-cor').value;
   const editId = document.getElementById('cad-editing-id').value;
   if (!nome) { showToast('⚠️ Digite um nome!'); return; }
+
+  // Verificar se o nome já existe (duplicidade)
+  const existe = cadastrosCache.find(c => c.nome.toLowerCase() === nome.toLowerCase() && c.id !== editId);
+  if (existe) {
+    showToast('⚠️ Este nome já está cadastrado!');
+    return;
+  }
 
   try {
     if (editId) {
