@@ -411,7 +411,7 @@
   .rel-preview::-webkit-scrollbar { width:3px; }
   .rel-preview::-webkit-scrollbar-thumb { background:var(--border2); }
   .rel-row {
-    display:grid; grid-template-columns:2fr 1.5fr 1fr 1fr;
+    display:grid; grid-template-columns:2fr 1.4fr 1fr 0.8fr 1fr;
     gap:8px; padding:7px 0; border-bottom:1px solid var(--border); align-items:center;
   }
   .rel-row:last-child { border-bottom:none; }
