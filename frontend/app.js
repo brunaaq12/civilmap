@@ -43,40 +43,14 @@ let cadastrosCache = [];
 async function loadCadastrosFromApi() {
   try {
     const res = await api('GET', '/api/cadastros');
-    if (res.ok) {
-      cadastrosCache = res.data.cadastros || [];
-      updateResponsavelSelects();
-    }
+    if (res.ok) cadastrosCache = res.data.cadastros || [];
   } catch { cadastrosCache = []; }
-}
-
-function updateResponsavelSelects() {
-  const selects = ['f-resp', 'rel-responsavel'];
-  selects.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el) return;
-    const currentVal = el.value;
-    const isRel = id === 'rel-responsavel';
-    
-    el.innerHTML = isRel ? '<option value="all">Todos (Geral)</option>' : '<option value="">Selecione um responsável...</option>';
-    
-    cadastrosCache.forEach(c => {
-      const opt = document.createElement('option');
-      opt.value = c.nome;
-      opt.textContent = c.nome;
-      el.appendChild(opt);
-    });
-    
-    if (currentVal) el.value = currentVal;
-  });
 }
 function getCadastros() {
   return cadastrosCache;
 }
 function findCadastroByNome(nome) {
-  if (!nome) return null;
-  const n = nome.trim().toLowerCase();
-  return cadastrosCache.find(c => c.nome.trim().toLowerCase() === n);
+  return cadastrosCache.find(c => c.nome.toLowerCase() === nome.toLowerCase());
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -214,8 +188,9 @@ async function initApp() {
 
   if (!map) {
     map = L.map('map', { center: [-12.9714, -38.5014], zoom: 12 });
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; CARTO', maxZoom: 19
+    // OpenStreetMap não exige API key e evita o erro "api key required" da CARTO.
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors', maxZoom: 19
     }).addTo(map);
     map.on('click', onMapClick);
     setTimeout(() => document.getElementById('map-hint').classList.add('fade'), 5000);
@@ -224,20 +199,9 @@ async function initApp() {
   Object.values(markers).forEach(m => map.removeLayer(m));
   markers = {};
 
-  // Carregar cadastros ANTES de carregar obras (para sincronizar cores dos pins)
-  await loadCadastrosFromApi();
   await loadObras('all');
   await loadStats();
   initCadastrosUI();
-  
-  // Iniciar sincronizacao automatica de obras
-  // startObrasSync(); // Desativado a pedido da usuária
-  
-  // Sincronizar cadastros a cada 5 segundos para garantir consistencia entre dispositivos
-  // setInterval(async () => {
-  //   await loadCadastrosFromApi();
-  //   refreshMarkers();
-  // }, 5000); // Desativado a pedido da usuária
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -268,21 +232,9 @@ async function loadObras(filter = 'all', search = '') {
     renderSidebar(obras);
     setCloudStatus(true);
   } catch (e) {
-    list.innerHTML = '<div class="sidebar-empty">❌ Erro de sincronizacao.</div>';
+    list.innerHTML = '<div class="sidebar-empty">❌ Erro de sincronização.</div>';
     setCloudStatus(false);
   }
-}
-
-// Sincronizar obras a cada 10 segundos para manter o mapa atualizado em todos os dispositivos
-let syncObrasInterval;
-function startObrasSync() {
-  if (syncObrasInterval) clearInterval(syncObrasInterval);
-  syncObrasInterval = setInterval(async () => {
-    await loadObras(activeFilter);
-  }, 10000);
-}
-function stopObrasSync() {
-  if (syncObrasInterval) clearInterval(syncObrasInterval);
 }
 
 async function loadStats() {
@@ -315,27 +267,45 @@ const STATUS_COLORS = {
   cotacao:    '#3b82f6'
 };
 
-function dualPinIcon(status, responsavel) {
+function getToneladas(obra) {
+  const valor = obra?.quantidade_toneladas ?? obra?.toneladas ?? 0;
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : 0;
+}
+
+function getPinSize(toneladas) {
+  if (toneladas > 5000) return 48;
+  if (toneladas > 1000) return 36;
+  return 26;
+}
+
+function formatToneladas(valor) {
+  return Number(valor || 0).toLocaleString('pt-BR', { maximumFractionDigits: 2 });
+}
+
+function dualPinIcon(status, responsavel, toneladas = 0) {
   const statusColor = STATUS_COLORS[status] || '#eab308';
   const cadastro = findCadastroByNome(responsavel);
   const cadastroColor = cadastro ? cadastro.cor : '#555555';
   const isCivil = status === 'cotacao';
+  const size = getPinSize(Number(toneladas));
+  const centerSize = Math.max(8, Math.round(size * 0.31));
 
   return L.divIcon({
     className: '',
-    html: `<div style="width:32px;height:32px;border-radius:50% 50% 50% 0;
+    html: `<div style="width:${size}px;height:${size}px;border-radius:50% 50% 50% 0;
                 transform:rotate(-45deg);border:2px solid rgba(255,255,255,0.3);
                 box-shadow:0 3px 12px rgba(0,0,0,0.6);
                 display:flex;overflow:hidden;position:relative;">
              <div style="width:50%;height:100%;background:${cadastroColor};"></div>
              <div style="width:50%;height:100%;background:${isCivil ? 'linear-gradient(135deg,'+statusColor+' 50%,#fff 50%)' : statusColor};"></div>
-             <div style="width:10px;height:10px;border-radius:50%;background:white;
+             <div style="width:${centerSize}px;height:${centerSize}px;border-radius:50%;background:white;
                          position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(45deg);
                          opacity:0.9;"></div>
            </div>`,
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -34]
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size],
+    popupAnchor: [0, -(size + 2)]
   });
 }
 
@@ -346,11 +316,13 @@ function addMarker(o) {
   const isOwner = checkOwnership(o);
   const editBtn = `<button class="popup-edit" onclick="openEdit('${o.id}')">${isOwner ? '✏️ Editar' : '👁️ Ver Detalhes'}</button>`;
 
-  const m = L.marker([o.latitude, o.longitude], { icon: dualPinIcon(o.status, o.responsavel) })
+  const toneladas = getToneladas(o);
+  const m = L.marker([o.latitude, o.longitude], { icon: dualPinIcon(o.status, o.responsavel, toneladas) })
     .addTo(map)
     .bindPopup(`
       <div class="popup-nome">${o.nome}</div>
       <div class="popup-resp">👤 ${o.responsavel}</div>
+      <div style="font-size:11px;margin-bottom:7px;">⚖️ ${formatToneladas(toneladas)} t</div>
       <div style="font-size:11px;margin-bottom:7px;">${sLabel[o.status]||o.status}</div>
       ${editBtn}
     `);
@@ -381,15 +353,15 @@ window.openEdit = function(id) {
   document.getElementById('modal-coords').textContent =
     `📌 Lat: ${parseFloat(obra.latitude).toFixed(5)}  |  Lng: ${parseFloat(obra.longitude).toFixed(5)}`;
   document.getElementById('f-nome').value    = obra.nome || '';
-  updateResponsavelSelects(); // Garante que a lista esteja atualizada
   document.getElementById('f-resp').value    = obra.responsavel || '';
   document.getElementById('f-status').value  = obra.status || 'andamento';
   document.getElementById('f-inicio').value  = obra.data_inicio || '';
   document.getElementById('f-fim').value     = obra.data_fim || '';
   document.getElementById('f-obs').value     = obra.observacoes || '';
+  document.getElementById('f-toneladas').value = getToneladas(obra) || '';
 
   // Controles de permissão
-  const fields = ['f-nome','f-resp','f-status','f-inicio','f-fim','f-obs'];
+  const fields = ['f-nome','f-resp','f-status','f-inicio','f-fim','f-obs','f-toneladas'];
   fields.forEach(fid => document.getElementById(fid).disabled = !isOwner);
 
   document.getElementById('btn-delete').style.display = isOwner ? 'inline-flex' : 'none';
@@ -407,7 +379,7 @@ function onMapClick(e) {
   document.getElementById('modal-obra-title').textContent = 'Nova Obra';
   document.getElementById('modal-coords').textContent =
     `📌 Lat: ${pendingLat.toFixed(5)}  |  Lng: ${pendingLng.toFixed(5)}`;
-  ['f-nome','f-resp','f-obs','f-inicio','f-fim'].forEach(id => {
+  ['f-nome','f-resp','f-obs','f-inicio','f-fim','f-toneladas'].forEach(id => {
     const el = document.getElementById(id);
     el.value = '';
     el.disabled = false;
@@ -430,7 +402,10 @@ document.getElementById('btn-save').addEventListener('click', async () => {
   const obs    = document.getElementById('f-obs').value.trim();
   const inicio = document.getElementById('f-inicio').value;
   const fim    = document.getElementById('f-fim').value;
-  if (!nome || !resp) { showToast('⚠️ Preencha Nome e Responsável!'); return; }
+  const toneladasInput = document.getElementById('f-toneladas').value;
+  const quantidade_toneladas = Number(toneladasInput);
+  if (!nome || !resp || toneladasInput === '') { showToast('⚠️ Preencha Nome, Responsável e Quantidade de toneladas!'); return; }
+  if (!Number.isFinite(quantidade_toneladas) || quantidade_toneladas < 0) { showToast('⚠️ Informe uma quantidade de toneladas válida!'); return; }
 
   const btn = document.getElementById('btn-save');
   btn.textContent = 'Enviando...'; btn.disabled = true;
@@ -442,7 +417,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
       }
       const { ok, data } = await api('PUT', `/api/obras/${editingId}`, {
         nome, responsavel: resp, status,
-        data_inicio: inicio, data_fim: fim, observacoes: obs
+        data_inicio: inicio, data_fim: fim, observacoes: obs, quantidade_toneladas
       });
       if (!ok) throw new Error(data.error);
       showToast('✏️ Atualizado!');
@@ -450,7 +425,7 @@ document.getElementById('btn-save').addEventListener('click', async () => {
       const { ok, data } = await api('POST', '/api/obras', {
         nome, responsavel: resp, status,
         latitude: pendingLat, longitude: pendingLng,
-        data_inicio: inicio, data_fim: fim, observacoes: obs
+        data_inicio: inicio, data_fim: fim, observacoes: obs, quantidade_toneladas
       });
       if (!ok) throw new Error(data.error);
       showToast('📍 Salvo!');
@@ -513,6 +488,7 @@ function renderSidebar(obras) {
       <span class="obra-data">${o.criado_em || ''}</span>
       <div class="obra-nome">${o.nome}</div>
       <div class="obra-resp">👤 ${o.responsavel}</div>
+      <div class="obra-resp">⚖️ ${formatToneladas(getToneladas(o))} t</div>
       <span class="badge ${o.status}">${sEmoji[o.status]} ${sLabel[o.status]||o.status}</span>
     </div>
     `;
@@ -534,8 +510,6 @@ document.getElementById('filter-row').addEventListener('click', e => {
   chip.classList.add('active');
   activeFilter = chip.dataset.filter;
   loadObras(activeFilter, document.getElementById('search-input').value.trim());
-  // Reiniciar sincronizacao com novo filtro
-  startObrasSync();
 });
 
 document.getElementById('search-input').addEventListener('input', e => {
@@ -578,13 +552,6 @@ document.getElementById('btn-cad-save').addEventListener('click', async () => {
   const cor  = document.getElementById('cad-cor').value;
   const editId = document.getElementById('cad-editing-id').value;
   if (!nome) { showToast('⚠️ Digite um nome!'); return; }
-
-  // Verificar se o nome já existe (duplicidade)
-  const existe = cadastrosCache.find(c => c.nome.toLowerCase() === nome.toLowerCase() && c.id !== editId);
-  if (existe) {
-    showToast('⚠️ Este nome já está cadastrado!');
-    return;
-  }
 
   try {
     if (editId) {
@@ -720,13 +687,14 @@ window.previewRel = function() {
     <div class="rel-count">${filtered.length}</div>
     <div class="rel-info">obras encontradas</div>
     <div class="rel-row rel-header">
-      <span>Nome</span><span>Responsável</span><span>Status</span><span>Início</span>
+      <span>Nome</span><span>Responsável</span><span>Status</span><span>Toneladas</span><span>Início</span>
     </div>
     ${filtered.map(o => `
       <div class="rel-row">
         <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${o.nome}</span>
         <span style="color:#777;">${o.responsavel}</span>
         <span>${sEmoji[o.status]||''} ${sLabel[o.status]||o.status}</span>
+        <span>${formatToneladas(getToneladas(o))} t</span>
         <span style="color:#777;">${fmtDate(o.data_inicio)}</span>
       </div>
     `).join('')}
@@ -744,6 +712,7 @@ document.getElementById('btn-export').addEventListener('click', () => {
     'Status': sLabel[o.status] || o.status,
     'Início': o.data_inicio || '—',
     'Previsão Fim': o.data_fim || '—',
+    'Quantidade de toneladas': getToneladas(o),
     'Observações': o.observacoes || '',
     'Criado em': o.criado_em || ''
   }));
