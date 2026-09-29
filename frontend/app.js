@@ -43,14 +43,22 @@ let cadastrosCache = [];
 async function loadCadastrosFromApi() {
   try {
     const res = await api('GET', '/api/cadastros');
-    if (res.ok) cadastrosCache = res.data.cadastros || [];
+    if (res.ok) { cadastrosCache = res.data.cadastros || []; updateResponsavelSelect(); }
   } catch { cadastrosCache = []; }
+}
+function updateResponsavelSelect(selected = document.getElementById('f-resp').value) {
+  const sel = document.getElementById('f-resp');
+  sel.replaceChildren(new Option('Selecione um responsável...', ''));
+  cadastrosCache.forEach(c => sel.add(new Option(c.nome, c.nome)));
+  // Preserve o responsável de uma obra antiga mesmo se o cadastro foi removido.
+  if (selected && ![...sel.options].some(o => o.value === selected)) sel.add(new Option(selected + ' (cadastro removido)', selected));
+  sel.value = selected;
 }
 function getCadastros() {
   return cadastrosCache;
 }
 function findCadastroByNome(nome) {
-  return cadastrosCache.find(c => c.nome.toLowerCase() === nome.toLowerCase());
+  return cadastrosCache.find(c => c.nome.toLowerCase() === String(nome || '').toLowerCase());
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -353,7 +361,7 @@ window.openEdit = function(id) {
   document.getElementById('modal-coords').textContent =
     `📌 Lat: ${parseFloat(obra.latitude).toFixed(5)}  |  Lng: ${parseFloat(obra.longitude).toFixed(5)}`;
   document.getElementById('f-nome').value    = obra.nome || '';
-  document.getElementById('f-resp').value    = obra.responsavel || '';
+  updateResponsavelSelect(obra.responsavel || '');
   document.getElementById('f-status').value  = obra.status || 'andamento';
   document.getElementById('f-inicio').value  = obra.data_inicio || '';
   document.getElementById('f-fim').value     = obra.data_fim || '';
@@ -634,10 +642,20 @@ function refreshMarkers() {
 //  RELATÓRIO (com filtro de responsável/cadastro)
 // ══════════════════════════════════════════════════════════════════
 document.getElementById('btn-rel').addEventListener('click', () => {
+  openReport();
+});
+
+async function openReport() {
+  relObras = [];
+  try {
+    const [obrasResult] = await Promise.all([api('GET', '/api/obras'), loadCadastrosFromApi()]);
+    if (!obrasResult.ok) throw new Error(obrasResult.data.error);
+    reportObras = obrasResult.data.obras || [];
+  } catch (e) { showToast('❌ Erro ao carregar relatório: ' + e.message); return; }
   // Popular select de responsáveis
   const sel = document.getElementById('rel-responsavel');
   sel.innerHTML = '<option value="all">Todos (Geral)</option>';
-  const resps = [...new Set(allObras.map(o => o.responsavel))];
+  const resps = [...new Set(reportObras.map(o => o.responsavel).filter(Boolean))];
   const cadastros = cadastrosCache;
   // Adicionar responsáveis das obras
   resps.forEach(r => {
@@ -655,7 +673,9 @@ document.getElementById('btn-rel').addEventListener('click', () => {
   });
   document.getElementById('rel-preview').style.display = 'none';
   openOverlay('overlay-rel');
-});
+}
+
+let reportObras = [];
 
 document.getElementById('rel-close').addEventListener('click', () => closeOverlay('overlay-rel'));
 document.getElementById('rel-cancel').addEventListener('click', () => closeOverlay('overlay-rel'));
@@ -666,7 +686,7 @@ window.previewRel = function() {
   const status = document.getElementById('rel-status').value;
   const resp   = document.getElementById('rel-responsavel').value;
 
-  let filtered = [...allObras];
+  let filtered = [...reportObras];
   if (status !== 'all') filtered = filtered.filter(o => o.status === status);
   if (resp !== 'all')   filtered = filtered.filter(o => o.responsavel === resp);
   if (inicio)           filtered = filtered.filter(o => o.data_inicio && o.data_inicio >= inicio);
@@ -703,8 +723,9 @@ window.previewRel = function() {
 };
 
 document.getElementById('btn-export').addEventListener('click', () => {
-  if (!relObras.length) { previewRel(); }
+  previewRel();
   if (!relObras.length) { showToast('⚠️ Nenhum dado para exportar.'); return; }
+  if (typeof XLSX === 'undefined') { showToast('❌ Biblioteca do Excel indisponível.'); return; }
   const sLabel = { andamento:'Em Andamento', concluida:'Concluída', paralisada:'Paralisada', cotacao:'Obra em Cotação' };
   const data = relObras.map(o => ({
     'Nome': o.nome,
